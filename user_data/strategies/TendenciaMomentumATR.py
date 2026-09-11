@@ -39,6 +39,7 @@ from datetime import datetime
 from pandas import DataFrame
 import talib.abstract as ta
 
+from freqtrade.enums import RunMode
 from freqtrade.persistence import Trade
 from freqtrade.strategy import DecimalParameter, IntParameter, IStrategy
 
@@ -122,6 +123,13 @@ class TendenciaMomentumATR(IStrategy):
         # --- Estado interno del kill switch (drawdown total) ---
         self._equity_peak: float | None = None
         self._kill_switch_active: bool = False
+        # "Armado": permite que se vuelva a contar/avisar un nuevo episodio
+        # de drawdown >=20% una vez que el capital hace un nuevo máximo
+        # histórico. Solo se usa para el conteo informativo en backtest
+        # (ver bot_loop_start) y para evitar reenviar el mismo aviso en
+        # live/dry-run mientras el drawdown sigue por encima del umbral.
+        self._kill_switch_armado: bool = True
+        self._kill_switch_veces_disparado: int = 0
 
         # --- Estado interno del límite de pérdida diaria ---
         self._dia_actual = None
@@ -358,28 +366,67 @@ class TendenciaMomentumATR(IStrategy):
     #      curso) -> bloquea SOLO nuevas entradas; las posiciones ya
     #      abiertas siguen su curso normal (no se fuerzan a cerrar, a
     #      diferencia del kill switch).
+    #
+    # IMPORTANTE — por qué el kill switch se comporta distinto en
+    # backtest/hyperopt que en dry-run/live:
+    #
+    # En dry-run/live, "requiere reinicio manual" es la conducta correcta
+    # (no queremos que el bot se auto-perdone solo). Pero en un backtest
+    # de varios años, esa misma regla aplicada literalmente significa que
+    # la PRIMERA vez que el drawdown toca 20% en toda la historia (por
+    # ejemplo, en el mercado bajista de 2018), el bot queda bloqueado
+    # para siempre y el resto del backtest (varios años de datos) nunca
+    # llega a generar ni una operación más. Eso no es un resultado real
+    # de la estrategia, es un artefacto de simular "reinicio manual" en
+    # un proceso que nunca se reinicia. Por eso, en backtest/hyperopt el
+    # kill switch NO bloquea nada: solo queda registrado en el log y
+    # contado en self._kill_switch_veces_disparado, para que sepamos
+    # cuántas veces se habría activado en la vida real (información útil
+    # para juzgar la estrategia, pero sin distorsionar el resto de las
+    # estadísticas del backtest).
     # ------------------------------------------------------------------
     def bot_loop_start(self, current_time: datetime, **kwargs) -> None:
+        en_vivo = self.dp.runmode in (RunMode.DRY_RUN, RunMode.LIVE)
         capital_total = self.wallets.get_total_stake_amount()
 
         # --- a) Kill switch por drawdown total ---
-        if self._equity_peak is None or capital_total > self._equity_peak:
+        if self._equity_peak is None:
             self._equity_peak = capital_total
 
+        if capital_total > self._equity_peak:
+            self._equity_peak = capital_total
+            # Nuevo máximo histórico: si en algún momento futuro se vuelve
+            # a caer 20% desde este nuevo máximo, cuenta como un nuevo
+            # episodio (relevante sobre todo para el conteo en backtest).
+            self._kill_switch_armado = True
+
         drawdown_total = 0.0
-        if self._equity_peak and self._equity_peak > 0:
+        if self._equity_peak > 0:
             drawdown_total = 1 - (capital_total / self._equity_peak)
 
-        if drawdown_total >= self.drawdown_kill_switch_pct and not self._kill_switch_active:
-            self._kill_switch_active = True
+        if drawdown_total >= self.drawdown_kill_switch_pct and self._kill_switch_armado:
+            self._kill_switch_armado = False
+            self._kill_switch_veces_disparado += 1
             mensaje = (
-                f"🛑 KILL SWITCH ACTIVADO: drawdown total de {drawdown_total:.1%} "
-                f"(umbral: {self.drawdown_kill_switch_pct:.0%}). Se bloquean nuevas "
-                f"entradas y se cerrarán todas las posiciones abiertas en cuanto "
-                f"se evalúe cada par."
+                f"🛑 KILL SWITCH: drawdown total de {drawdown_total:.1%} "
+                f"(umbral: {self.drawdown_kill_switch_pct:.0%}). "
+                f"Episodio número {self._kill_switch_veces_disparado} en este período."
             )
-            logger.warning(mensaje)
-            self.dp.send_msg(mensaje, always_send=True)
+            if en_vivo:
+                self._kill_switch_active = True
+                mensaje += (
+                    " Se bloquean nuevas entradas y se cerrarán todas las "
+                    "posiciones abiertas en cuanto se evalúe cada par. "
+                    "Requiere reinicio manual del bot para reanudar."
+                )
+                logger.warning(mensaje)
+                self.dp.send_msg(mensaje, always_send=True)
+            else:
+                mensaje += (
+                    " [modo backtest/hyperopt: NO se detiene el resto del "
+                    "histórico, esto es solo un registro informativo]"
+                )
+                logger.warning(mensaje)
 
         # --- b) Límite de pérdida diaria (calendario UTC) ---
         dia_de_hoy = current_time.date()
