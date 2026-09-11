@@ -85,8 +85,16 @@ datos de velas que en la vida real todavía no existían.
 docker compose run --rm freqtrade lookahead-analysis `
     --config user_data/config.json `
     --strategy TendenciaMomentumATR `
-    --timerange 20170101-20250911
+    --timerange 20170101-20250911 `
+    --allow-limit-orders
 ```
+
+`--allow-limit-orders` es necesario porque, por defecto, `lookahead-analysis`
+fuerza órdenes de mercado para simplificar su simulación interna, y eso
+choca con nuestra configuración de `entry_pricing.price_side = "same"`
+(pensada para órdenes límite, que es lo que sí usamos en dry-run/live).
+Con este flag, respeta la configuración real de la estrategia en vez de
+forzar market orders.
 
 Si reporta algún hallazgo, pégamelo — puede requerir ajustar el código
 antes de seguir.
