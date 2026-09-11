@@ -1,0 +1,117 @@
+{
+    // ============================================================
+    // Config base del experimento — Fase 1 (entorno y datos).
+    // dry_run queda en true de forma PERMANENTE en este proyecto:
+    // no se usa dinero real en ninguna fase.
+    // ============================================================
+
+    "max_open_trades": 6,
+    // Un slot por par del universo (BTC, ETH, BNB, LTC, ADA, XRP).
+    // El tamaño real de cada posición no lo decide este número, sino la
+    // gestión de riesgo (1-2% de capital por operación, según ATR) que
+    // programaremos en la estrategia en Fase 2.
+
+    "stake_currency": "USDT",
+    "stake_amount": "unlimited",
+    // Placeholder: en Fase 2 la estrategia calculará el tamaño de cada
+    // operación con custom_stake_amount() a partir del riesgo por operación
+    // y la distancia del stop-loss (ATR), no repartiendo el capital a partes
+    // iguales.
+
+    "tradable_balance_ratio": 0.99,
+    "fiat_display_currency": "USD",
+
+    "dry_run": true,
+    "dry_run_wallet": 10000,
+    // Capital simulado de referencia: 10,000 USDT ficticios. No es dinero real.
+
+    "trading_mode": "spot",
+    "margin_mode": "",
+    "cancel_open_orders_on_exit": false,
+
+    "fee": 0.001,
+    // 0.1% por lado, como decidiste (comisión spot estándar de Binance).
+    // Se usa para que backtesting/hyperopt apliquen ese costo de forma
+    // explícita en vez de depender de lo que devuelva la API pública.
+
+    "unfilledtimeout": {
+        "entry": 10,
+        "exit": 10,
+        "exit_timeout_count": 0,
+        "unit": "minutes"
+    },
+
+    "entry_pricing": {
+        "price_side": "same",
+        "use_order_book": true,
+        "order_book_top": 1,
+        "price_last_balance": 0.0,
+        "check_depth_of_market": {
+            "enabled": false,
+            "bids_to_ask_delta": 1
+        }
+    },
+
+    "exit_pricing": {
+        "price_side": "same",
+        "use_order_book": true,
+        "order_book_top": 1
+    },
+
+    "exchange": {
+        "name": "binance",
+        // Sin API key/secret: no hacen falta para dry-run ni para
+        // descargar datos públicos. NUNCA pongas credenciales reales aquí.
+        "key": "",
+        "secret": "",
+        "ccxt_config": {},
+        "ccxt_async_config": {},
+        "pair_whitelist": [
+            "BTC/USDT",
+            "ETH/USDT",
+            "BNB/USDT",
+            "LTC/USDT",
+            "ADA/USDT",
+            "XRP/USDT"
+        ],
+        "pair_blacklist": []
+    },
+
+    "pairlists": [
+        {"method": "StaticPairList"}
+    ],
+    // Lista fija (no dinámica): el universo de 6 monedas fue decidido a
+    // propósito y no debe cambiar solo porque un ranking automático de
+    // volumen lo sugiera.
+
+    "telegram": {
+        "enabled": false,
+        "token": "",
+        "chat_id": ""
+    },
+    // Se activará en Fase 3, leyendo el token desde variables de entorno
+    // (nunca hardcodeado aquí). Por ahora, apagado.
+
+    "api_server": {
+        "enabled": false,
+        // Aunque está apagado, freqtrade exige estos campos en el schema.
+        // Mientras enabled=false no hay servidor escuchando en ningún lado,
+        // así que estos valores no son secretos reales. Si algún día
+        // activamos la API/FreqUI (Fase 3+), hay que cambiar usuario,
+        // contraseña y jwt_secret_key por valores propios (idealmente vía
+        // variables de entorno, no hardcodeados aquí).
+        "listen_ip_address": "127.0.0.1",
+        "listen_port": 8080,
+        "username": "cambiar_antes_de_activar",
+        "password": "cambiar_antes_de_activar",
+        "jwt_secret_key": "cambiar_por_un_valor_aleatorio_largo_antes_de_activar"
+    },
+
+    "bot_name": "experimento-tendencia-dryrun",
+    "initial_state": "stopped",
+    "force_entry_enable": false,
+
+    "internals": {
+        "process_throttle_secs": 5
+    }
+}

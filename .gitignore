@@ -1,17 +1,18 @@
 # Secretos y configuración local (nunca deben ir al repo)
+# user_data/config.json SÍ se versiona (no tiene secretos: key/secret de
+# exchange vacíos, telegram/api_server deshabilitados). Los secretos reales
+# (token de Telegram, etc.) van en un archivo separado que sí se ignora:
 .env
 *.env
-config.json
-config-private.json
-user_data/config.json
 user_data/config-private.json
+user_data/config-secrets.json
 
 # Freqtrade user_data (datos descargados, resultados de backtest, logs, DB)
 user_data/data/
 user_data/backtest_results/
 user_data/hyperopt_results/
-user_data/logs/
 user_data/notebooks/.ipynb_checkpoints/
+user_data/logs/
 *.sqlite
 *.log
 
