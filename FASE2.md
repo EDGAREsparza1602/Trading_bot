@@ -84,17 +84,24 @@ datos de velas que en la vida real todavía no existían.
 ```powershell
 docker compose run --rm freqtrade lookahead-analysis `
     --config user_data/config.json `
+    --config user_data/config-lookahead.json `
     --strategy TendenciaMomentumATR `
     --timerange 20170101-20250911 `
     --allow-limit-orders
 ```
 
-`--allow-limit-orders` es necesario porque, por defecto, `lookahead-analysis`
-fuerza órdenes de mercado para simplificar su simulación interna, y eso
-choca con nuestra configuración de `entry_pricing.price_side = "same"`
-(pensada para órdenes límite, que es lo que sí usamos en dry-run/live).
-Con este flag, respeta la configuración real de la estrategia en vez de
-forzar market orders.
+Nota sobre este comando (por si te preguntas por qué tiene dos `--config`):
+`lookahead-analysis` fuerza internamente órdenes de mercado, lo que choca
+con nuestro `entry_pricing.price_side = "same"` (pensado para órdenes
+límite, la configuración real de dry-run/live). En teoría el flag
+`--allow-limit-orders` evita ese forzado, pero es un bug conocido de esta
+versión de freqtrade: el flag existe en la CLI pero nunca llega a
+aplicarse al config real, así que no funciona (lo dejamos igual por si
+una versión futura lo arregla). El segundo `--config
+user_data/config-lookahead.json` es nuestro workaround: pisa solo
+`entry_pricing.price_side`/`exit_pricing.price_side` a `"other"` (lo que
+exige freqtrade para órdenes de mercado), sin tocar nada más de la
+configuración real — ese archivo solo se usa para este comando.
 
 Si reporta algún hallazgo, pégamelo — puede requerir ajustar el código
 antes de seguir.

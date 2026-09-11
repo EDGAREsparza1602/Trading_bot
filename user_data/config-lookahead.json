@@ -1,0 +1,20 @@
+{
+    // Override SOLO para "freqtrade lookahead-analysis", que fuerza
+    // internamente order_types a market orders (bug conocido de esta
+    // versión de freqtrade: el flag --allow-limit-orders está registrado
+    // en la CLI pero nunca llega a aplicarse al config real, así que no
+    // sirve para evitar el forzado de market orders).
+    //
+    // freqtrade exige price_side = "other" cuando las órdenes son de
+    // mercado ("Market entry/exit orders require price_side = 'other'").
+    // Este archivo se pasa como una segunda -c/--config DESPUÉS de
+    // user_data/config.json, así que solo pisa estas dos claves y deja
+    // todo lo demás (pares, fee, capital simulado, etc.) igual. No se usa
+    // en backtest/hyperopt/dry-run normales, solo en lookahead-analysis.
+    "entry_pricing": {
+        "price_side": "other"
+    },
+    "exit_pricing": {
+        "price_side": "other"
+    }
+}
