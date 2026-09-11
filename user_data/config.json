@@ -89,23 +89,24 @@
         "token": "",
         "chat_id": ""
     },
-    // Se activará en Fase 3, leyendo el token desde variables de entorno
-    // (nunca hardcodeado aquí). Por ahora, apagado.
+    // Deshabilitado acá a propósito: este config.json también lo usan los
+    // comandos de Fase 2 (backtesting, hyperopt, lookahead-analysis...) y
+    // no queremos que esos exijan credenciales de Telegram para correr.
+    // Para Fase 3 (dry-run en vivo), el activado real vive en
+    // user_data/config-live.json, que se agrega como un --config extra
+    // SOLO al comando "trade" (ver FASE3.md y docker-compose.yml).
 
     "api_server": {
         "enabled": false,
-        // Aunque está apagado, freqtrade exige estos campos en el schema.
-        // Mientras enabled=false no hay servidor escuchando en ningún lado,
-        // así que estos valores no son secretos reales. Si algún día
-        // activamos la API/FreqUI (Fase 3+), hay que cambiar usuario,
-        // contraseña y jwt_secret_key por valores propios (idealmente vía
-        // variables de entorno, no hardcodeados aquí).
         "listen_ip_address": "127.0.0.1",
         "listen_port": 8080,
         "username": "cambiar_antes_de_activar",
         "password": "cambiar_antes_de_activar",
         "jwt_secret_key": "cambiar_por_un_valor_aleatorio_largo_antes_de_activar"
     },
+    // Mismo motivo: deshabilitado en el config base, activado solo en
+    // config-live.json (necesario para que el healthcheck de Docker pueda
+    // preguntarle al bot "¿seguís vivo?").
 
     "bot_name": "experimento-tendencia-dryrun",
     "initial_state": "stopped",

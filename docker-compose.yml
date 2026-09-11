@@ -3,18 +3,62 @@ services:
     image: freqtradeorg/freqtrade:stable
     container_name: freqtrade-experimento
     restart: unless-stopped
+    # Reinicio automático si el proceso se cae (crash) o si Docker Desktop
+    # se reinicia. Para el caso de que el bot quede "colgado" sin crashear
+    # (no responde pero el proceso sigue vivo), ver el healthcheck +
+    # el servicio "autoheal" más abajo.
+    labels:
+      - "autoheal=true"
     volumes:
       - "./user_data:/freqtrade/user_data"
       - "./scripts:/freqtrade/scripts"
-    # El puerto de la API/FreqUI queda comentado por ahora: no lo necesitamos
-    # para descargar datos ni para backtesting. Lo activaremos, atado solo a
-    # localhost, si en Fase 3 queremos un panel web además de Telegram.
-    # ports:
-    #   - "127.0.0.1:8080:8080"
+    ports:
+      # Atado a 127.0.0.1: solo se puede acceder desde tu propia máquina
+      # (ni siquiera desde otras computadoras de tu red), nunca expuesto
+      # a internet. Sirve para: 1) el healthcheck de abajo, y 2) que
+      # abras FreqUI en tu navegador (http://127.0.0.1:8080) para ver
+      # operaciones, capital y gráficos en Fase 3.
+      - "127.0.0.1:8080:8080"
+    env_file:
+      # Docker Compose ya carga automáticamente un archivo ".env" en esta
+      # misma carpeta si existe, pero lo dejamos explícito para que quede
+      # claro de dónde salen las variables FREQTRADE__TELEGRAM__* y
+      # FREQTRADE__API_SERVER__* (ver .env.example y FASE3.md).
+      - .env
+    healthcheck:
+      # Le pregunta cada 2 minutos a la API interna del bot "¿seguís
+      # vivo?" (endpoint público /ping, no necesita login). Si falla 3
+      # veces seguidas (~6 minutos sin responder), Docker marca el
+      # contenedor como "unhealthy" y el servicio "autoheal" de abajo lo
+      # reinicia solo.
+      # Usamos Python (no curl) para el chequeo: no podemos confirmar de
+      # antemano que la imagen oficial de freqtrade traiga curl instalado,
+      # pero Python sí está garantizado (es la propia app).
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://127.0.0.1:8080/api/v1/ping', timeout=5)\" || exit 1"]
+      interval: 120s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    # En Fase 1-2 este servicio se usaba solo para comandos puntuales con
+    # "docker compose run --rm freqtrade <comando>". Desde Fase 3, el
+    # "command:" de abajo hace que "docker compose up -d" deje el bot
+    # corriendo en dry-run de forma continua.
+    command: >
+      trade
+      --config user_data/config.json
+      --config user_data/config-live.json
+      --strategy TendenciaMomentumATR
+      --logfile /freqtrade/user_data/logs/freqtrade.log
+      --db-url sqlite:////freqtrade/user_data/tradesv3.dryrun.sqlite
+      --dry-run
 
-    # En Fase 1 este servicio se usa SOLO para comandos puntuales con
-    # "docker compose run --rm freqtrade <comando>" (create-userdir,
-    # download-data, backtesting...). Por eso no definimos aquí un
-    # "command:" de arranque todavía: eso lo añadiremos en Fase 3, cuando
-    # pongamos el bot a correr en modo dry-run de forma continua con
-    # "docker compose up -d".
+  autoheal:
+    image: willfarrell/autoheal:latest
+    container_name: freqtrade-autoheal
+    restart: unless-stopped
+    environment:
+      - AUTOHEAL_CONTAINER_LABEL=autoheal
+    volumes:
+      # Necesita hablar con el daemon de Docker para poder reiniciar el
+      # contenedor de freqtrade cuando el healthcheck lo marca "unhealthy".
+      - "/var/run/docker.sock:/var/run/docker.sock"

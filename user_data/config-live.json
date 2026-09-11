@@ -1,0 +1,59 @@
+{
+    // Override que SOLO se usa para el comando "trade" (dry-run en vivo,
+    // Fase 3). Se pasa como un segundo --config, encima de config.json
+    // (deep-merge de freqtrade), así que solo pisa estas claves y deja
+    // todo lo demás (pares, riesgo, fee, capital simulado) igual.
+    //
+    // Por qué está separado de config.json: ese archivo lo siguen usando
+    // los comandos de Fase 2 (backtest, hyperopt...), y no queremos que
+    // esos exijan credenciales de Telegram/API para poder correr.
+
+    "telegram": {
+        "enabled": true,
+        // El token y el chat_id NUNCA van acá en texto plano. Freqtrade los
+        // lee automáticamente de las variables de entorno
+        // FREQTRADE__TELEGRAM__TOKEN y FREQTRADE__TELEGRAM__CHAT_ID,
+        // definidas en tu archivo .env local (que está en .gitignore, no
+        // se sube al repo). Si esas variables no están definidas, el bot
+        // falla al arrancar con un mensaje claro en vez de arrancar mudo.
+        "token": "",
+        "chat_id": "",
+        "notification_settings": {
+            "status": "on",
+            "warning": "on",
+            "startup": "on",
+            // "startup" hace de sustituto de heartbeat: si el contenedor
+            // se reinicia solo (por un cuelgue que detecta el healthcheck
+            // + autoheal, ver docker-compose.yml), este aviso te llega y
+            // ahí sabés que el bot dejó de responder en algún momento y
+            // se reinició solo.
+            "entry": "on",
+            "entry_fill": "on",
+            "exit": "on",
+            "exit_fill": "on",
+            "protection_trigger": "on",
+            "protection_trigger_global": "on"
+        },
+        "allow_custom_messages": true
+        // Necesario para que los avisos de kill switch y de límite de
+        // pérdida diaria (mandados desde la estrategia con
+        // self.dp.send_msg) lleguen a Telegram.
+    },
+
+    "api_server": {
+        "enabled": true,
+        // Solo escucha en 127.0.0.1 DENTRO del contenedor. En
+        // docker-compose.yml NO publicamos este puerto al host, así que
+        // no es alcanzable desde fuera del contenedor ni siquiera desde
+        // tu propio Windows. Lo activamos únicamente para que el
+        // healthcheck de Docker pueda preguntarle "¿seguís vivo?" a
+        // través de /api/v1/ping (endpoint público, sin login).
+        // Usuario, contraseña y jwt_secret_key vienen de variables de
+        // entorno (.env) — nunca texto plano acá.
+        "listen_ip_address": "127.0.0.1",
+        "listen_port": 8080,
+        "username": "",
+        "password": "",
+        "jwt_secret_key": ""
+    }
+}
