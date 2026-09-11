@@ -55,5 +55,14 @@
         "username": "",
         "password": "",
         "jwt_secret_key": ""
-    }
+    },
+
+    "initial_state": "running"
+    // El config.json base lo deja en "stopped" a propósito (útil durante
+    // desarrollo, para no operar por accidente con comandos sueltos).
+    // Acá lo pisamos a "running": si no, cada vez que el contenedor se
+    // reinicia solo (autoheal, restart: unless-stopped, o un reinicio de
+    // Windows), el bot quedaría parado esperando que alguien le mande
+    // /start manualmente por Telegram — rompería justo el "reinicio
+    // automático" que buscamos en Fase 3.
 }
