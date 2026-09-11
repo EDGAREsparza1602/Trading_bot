@@ -116,8 +116,19 @@ generaría resultados de backtest poco confiables).
 docker compose run --rm freqtrade recursive-analysis `
     --config user_data/config.json `
     --strategy TendenciaMomentumATR `
-    --timerange 20170101-20250911
+    --timerange 20180101-20250911
 ```
+
+Nota: acá el `--timerange` arranca en 2018-01-01 y no en 2017-01-01 como
+en los demás pasos. `recursive-analysis` prueba una ventana muy angosta
+justo al comienzo del rango pedido (rango pedido menos el buffer de 200
+velas de arranque de la estrategia, ≈33 días), y como BTC/USDT (el único
+par que usa esta prueba) recién tiene datos en Binance desde el
+2017-08-17, pedir el rango completo desde 2017-01-01 hace que esa ventana
+angosta caiga en una fecha sin datos y el comando corta con error. Con
+2018-01-01 como inicio queda mucho margen de sobra. El resto de los pasos
+de Fase 2 (backtest, hyperopt, validación) sí usan el rango completo
+desde 2017-01-01, porque ahí freqtrade se ajusta solo sin problema.
 
 ## 4. Hyperopt (máximo 4 parámetros, 100 configuraciones)
 
