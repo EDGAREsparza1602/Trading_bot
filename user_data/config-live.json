@@ -42,15 +42,24 @@
 
     "api_server": {
         "enabled": true,
-        // Solo escucha en 127.0.0.1 DENTRO del contenedor. En
-        // docker-compose.yml NO publicamos este puerto al host, así que
-        // no es alcanzable desde fuera del contenedor ni siquiera desde
-        // tu propio Windows. Lo activamos únicamente para que el
-        // healthcheck de Docker pueda preguntarle "¿seguís vivo?" a
-        // través de /api/v1/ping (endpoint público, sin login).
-        // Usuario, contraseña y jwt_secret_key vienen de variables de
-        // entorno (.env) — nunca texto plano acá.
-        "listen_ip_address": "127.0.0.1",
+        // "0.0.0.0" = escucha en todas las interfaces DE ADENTRO del
+        // contenedor. Ojo, esto NO expone nada a internet: la
+        // restricción real de seguridad ("solo accesible desde tu propia
+        // Windows") ya la pone docker-compose.yml con
+        // "127.0.0.1:8080:8080" en la sección ports — ese 127.0.0.1 es
+        // el de tu Windows, y sí bloquea cualquier acceso desde fuera de
+        // tu máquina.
+        //
+        // Si acá hubiésemos dejado "127.0.0.1" (como estaba antes), el
+        // servidor solo aceptaría conexiones que lleguen por el loopback
+        // INTERNO del contenedor — pero el tráfico que entra desde
+        // Windows a través del puerto publicado llega por la interfaz de
+        // red del contenedor, no por su loopback. Por eso el healthcheck
+        // (que corre DESDE ADENTRO) funcionaba, pero FreqUI desde tu
+        // navegador nunca podía conectarse: quedaba bien "sordo" a ese
+        // tráfico. Usuario, contraseña y jwt_secret_key vienen de
+        // variables de entorno (.env) — nunca texto plano acá.
+        "listen_ip_address": "0.0.0.0",
         "listen_port": 8080,
         "username": "",
         "password": "",
