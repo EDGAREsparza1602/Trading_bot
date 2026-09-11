@@ -5,6 +5,7 @@ services:
     restart: unless-stopped
     volumes:
       - "./user_data:/freqtrade/user_data"
+      - "./scripts:/freqtrade/scripts"
     # El puerto de la API/FreqUI queda comentado por ahora: no lo necesitamos
     # para descargar datos ni para backtesting. Lo activaremos, atado solo a
     # localhost, si en Fase 3 queremos un panel web además de Telegram.
